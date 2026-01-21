@@ -277,10 +277,14 @@ class Game {
   }
   
   resize() {
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
+    // 모바일 성능 최적화: 낮은 해상도로 그리고 CSS로 확대
+    const scale = window.devicePixelRatio > 1 ? 0.5 : 1;
+    this.width = Math.floor(window.innerWidth * scale);
+    this.height = Math.floor(window.innerHeight * scale);
     this.canvas.width = this.width;
     this.canvas.height = this.height;
+    this.canvas.style.width = window.innerWidth + 'px';
+    this.canvas.style.height = window.innerHeight + 'px';
   }
   
   reset() {
