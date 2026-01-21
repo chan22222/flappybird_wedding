@@ -2,7 +2,6 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import { GoogleGenAI } from '@google/genai';
 
 // --- Configuration ---
 const CONFIG = {
@@ -33,8 +32,83 @@ interface ScoreEntry {
   timestamp: number;
 }
 
-// --- Gemini Setup ---
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// --- Funny Messages ---
+const MESSAGES: Record<string, string[]> = {
+  '바닥': [
+    "벌써 바닥이랑 큰절 연습하시면 안 되죠! 우리 목표는 무사히 식장에 입성하는 겁니다!",
+    "바닥과 너무 친해지셨네요! 결혼식장은 저 위에 있답니다!",
+    "중력의 법칙을 너무 잘 따르시네요! 하지만 결혼은 중력을 거스르는 거예요!",
+    "바닥에 인사는 결혼식 때 하셔도 됩니다! 아직 이르다고요!",
+  ],
+  '하늘': [
+    "아니, 식장 가기도 전에 벌써 하늘로 승천하시면 어떡합니까! 마음이 너무 앞서가셨네요!",
+    "천국 가시기엔 아직 일러요! 먼저 결혼식부터 하셔야죠!",
+    "너무 들뜨셨나 봐요! 하늘 높이 날아가시면 안 됩니다!",
+    "달달한 신혼을 앞두고 벌써 승천하시면 곤란해요!",
+  ],
+  '야근': [
+    "야근의 늪에 빠지셨군요! 결혼하면 야근 핑계 못 대실 텐데!",
+    "야근 앞에서는 사랑도 무력하군요! 칼퇴근 연습 좀 하셔야겠어요!",
+    "결혼식 전날도 야근하실 건 아니시죠? 연습 좀 하세요!",
+  ],
+  '다이어트': [
+    "다이어트의 유혹을 이기지 못하셨군요! 웨딩 촬영 때문에 고생이 많으시네요!",
+    "살과의 전쟁에서 패배하셨군요! 결혼식 때는 드레스가 터지지 않게 조심하세요!",
+    "다이어트가 발목을 잡았군요! 뷔페에서 맘껏 드세요, 어차피 망했어요!",
+  ],
+  '텅장': [
+    "텅장의 현실 앞에 무릎 꿇으셨군요! 결혼 준비 비용이 무섭죠?",
+    "통장이 텅~ 비었군요! 축의금으로 메꿔지길 기도합니다!",
+    "텅장에 막히셨네요! 신혼여행은 국내로 하시는 건 어떨까요?",
+  ],
+  '지하철지연': [
+    "지하철 지연에 당하셨군요! 결혼식 날은 택시 타세요, 제발!",
+    "지하철이 또 말썽이군요! 식장까지 뛰어가실 각오 하셔야겠어요!",
+    "지하철 지연 앞에서는 장사 없네요! 일찍 출발하세요!",
+  ],
+  '집값폭등': [
+    "역시 집값 폭등 앞에서는 천하의 신랑·신부도 무릎을 꿇는군요!",
+    "집값에 막히셨군요! 전세라도 구하셨으면 좋겠네요!",
+    "집값 폭등이 발목을 잡았네요! 월세 살이의 운명인가요!",
+  ],
+  '코로나': [
+    "코로나 방역 수칙을 너무 엄격하게 지키느라 예식장 근처에도 못 가셨군요!",
+    "코로나가 또 발목을 잡았네요! 마스크 꼭 쓰세요!",
+    "코로나 시대의 결혼은 정말 힘들죠! 비대면 결혼식은 어떠세요?",
+  ],
+  '청첩장오타': [
+    "청첩장 오타에 당하셨군요! 꼼꼼히 확인 좀 하세요!",
+    "오타의 저주에 걸리셨네요! 날짜 틀린 거 아니죠?",
+    "청첩장 오타라니! 설마 신부 이름을 틀리신 건 아니겠죠?",
+  ],
+  '태풍': [
+    "태풍에 날아가셨군요! 야외 결혼식은 취소하시는 게...!",
+    "태풍의 위력 앞에 사랑도 날아갔네요! 실내 예식장 알아보세요!",
+    "태풍에 휩쓸리셨군요! 결혼식 날 맑으면 다행이에요!",
+  ],
+};
+
+const HIGH_SCORE_MESSAGES = [
+  "와! 대단해요! 무사히 예식장에 도착할 수 있겠는데요?",
+  "이 정도면 결혼 준비 만렙이시네요! 축하드립니다!",
+  "장애물을 척척 피하시다니! 결혼 생활도 이렇게 잘 하실 거예요!",
+  "실력이 예술이시네요! 신혼여행도 순탄하겠어요!",
+];
+
+function getRandomMessage(obstacle: string, score: number): string {
+  if (score >= 15) {
+    return HIGH_SCORE_MESSAGES[Math.floor(Math.random() * HIGH_SCORE_MESSAGES.length)];
+  }
+
+  const messages = MESSAGES[obstacle] || MESSAGES['바닥'];
+  const msg = messages[Math.floor(Math.random() * messages.length)];
+
+  // 점수 언급 추가
+  if (score <= 3) {
+    return `겨우 ${score}점이라니! ${msg}`;
+  }
+  return msg;
+}
 
 // --- Game Engine ---
 class Game {
@@ -140,9 +214,7 @@ class Game {
       <h2>게임 종료</h2>
       <div id="finalScore" style="font-size: 2.5rem; color: var(--accent-color); font-weight: bold;">0점</div>
       
-      <div class="ai-message" id="aiMessage">
-        <span class="loading">AI가 경기 내용을 분석 중입니다...</span>
-      </div>
+      <div class="ai-message" id="aiMessage"></div>
 
       <div class="input-group">
         <input type="text" id="inputName" placeholder="이름 (예: 홍길동)" maxlength="10">
@@ -265,30 +337,13 @@ class Game {
     (this.uiGameOver.querySelector('#submitScoreBtn') as HTMLButtonElement).innerText = '기록 등록하기';
 
     this.renderLeaderboard();
-    this.generateAIComment(collisionObstacle);
+    this.generateComment(collisionObstacle);
   }
 
-  async generateAIComment(obstacle: string) {
+  generateComment(obstacle: string) {
     const aiContainer = document.getElementById('aiMessage')!;
-    aiContainer.innerHTML = '<span class="loading">AI가 경기 내용을 분석 중입니다...</span>';
-
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `The user played a Flappy Bird-style wedding game called "Safely to the Wedding". 
-            They scored ${this.score} points (distance). 
-            They crashed into "${obstacle}".
-            Write a funny, witty, short (1 sentence) reaction message in Korean.
-            If the score is low (< 5), mock them gently or blame the obstacle.
-            If the score is high (> 20), praise them.
-            Tone: Friendly, wedding MC style.`,
-        });
-        
-        aiContainer.innerText = `💬 ${response.text.trim()}`;
-    } catch (e) {
-        console.error(e);
-        aiContainer.innerText = "💬 예식장 가는 길이 험난하네요! (AI 연결 실패)";
-    }
+    const message = getRandomMessage(obstacle, this.score);
+    aiContainer.innerText = `💬 ${message}`;
   }
 
   submitScore() {
@@ -388,11 +443,11 @@ class Game {
     this.bird.velocity += CONFIG.gravity;
     this.bird.y += this.bird.velocity;
     
-    // Rotation logic
-    if (this.bird.velocity < 0) this.bird.rotation = -25 * Math.PI / 180;
+    // Rotation logic (reduced for smoother feel)
+    if (this.bird.velocity < 0) this.bird.rotation = -10 * Math.PI / 180;
     else {
-        this.bird.rotation += 2 * Math.PI / 180;
-        if (this.bird.rotation > 70 * Math.PI / 180) this.bird.rotation = 70 * Math.PI / 180;
+        this.bird.rotation += 1 * Math.PI / 180;
+        if (this.bird.rotation > 30 * Math.PI / 180) this.bird.rotation = 30 * Math.PI / 180;
     }
 
     // Ceiling Collision
@@ -407,9 +462,18 @@ class Game {
         return;
     }
     
-    // Difficulty Scaling (very gentle)
-    const currentSpeed = CONFIG.pipeSpeed;
-    const currentGap = CONFIG.pipeGap;
+    // Difficulty Scaling (10% per tier)
+    let currentSpeed = CONFIG.pipeSpeed;
+    let currentGap = CONFIG.pipeGap;
+
+    if (this.score > 10) {
+        currentSpeed *= 1.1;  // 10% 증가
+        currentGap *= 0.95;
+    }
+    if (this.score > 20) {
+        currentSpeed *= 1.1;  // 추가 10% 증가
+        currentGap *= 0.95;
+    }
     
     // Pipe Spawning
     if (this.frames % CONFIG.pipeSpawnRate === 0) {
