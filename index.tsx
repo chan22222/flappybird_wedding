@@ -11,14 +11,16 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // --- Configuration ---
 const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-const mobileMultiplier = isMobile ? 2 : 1;
+const BASE_SIZE = 600; // 기준 크기
 
 const CONFIG = {
-  gravity: 0.08 * mobileMultiplier,
-  jumpStrength: -3 * mobileMultiplier, // slightly floaty for easier play
-  pipeSpeed: 1.8 * mobileMultiplier,
-  pipeSpawnRate: Math.floor(200 / mobileMultiplier), // frames
-  pipeGap: 330, // vertical gap
+  baseGravity: 0.15,
+  baseJumpStrength: -5,
+  basePipeSpeed: 3,
+  pipeSpawnRate: isMobile ? 100 : 120, // frames
+  basePipeGap: 0.35, // 화면 높이의 35%
+  basePipeWidth: 0.1, // 화면 너비의 10%
+  baseBirdRadius: 0.04, // 화면 크기의 4%
   maxAttempts: 10, // Daily limit
 };
 
@@ -125,11 +127,20 @@ class Game {
   ctx: CanvasRenderingContext2D;
   width: number;
   height: number;
-  
+  scale: number = 1;
+
+  // Scaled values
+  gravity: number;
+  jumpStrength: number;
+  pipeSpeed: number;
+  pipeGap: number;
+  pipeWidth: number;
+  birdRadius: number;
+
   state: 'MENU' | 'READY' | 'PLAYING' | 'GAMEOVER' = 'MENU';
   score: number = 0;
   frames: number = 0;
-  
+
   // Entities
   bird: { x: number; y: number; velocity: number; radius: number; rotation: number };
   pipes: Array<{ x: number; y: number; width: number; height: number; passed: boolean; type: 'TOP' | 'BOTTOM'; label?: string; emoji?: string }>;
@@ -281,9 +292,7 @@ class Game {
   
   resize() {
     // 모바일: 1:1 정사각형, PC: 전체 화면
-    const isMobileDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-
-    if (isMobileDevice) {
+    if (isMobile) {
       const size = Math.min(window.innerWidth, window.innerHeight);
       this.width = size;
       this.height = size;
@@ -297,6 +306,17 @@ class Game {
       this.canvas.width = this.width;
       this.canvas.height = this.height;
     }
+
+    // 스케일 계산 (기준 크기 대비)
+    this.scale = Math.min(this.width, this.height) / BASE_SIZE;
+
+    // 스케일 적용된 게임 값 계산
+    this.gravity = CONFIG.baseGravity * this.scale;
+    this.jumpStrength = CONFIG.baseJumpStrength * this.scale;
+    this.pipeSpeed = CONFIG.basePipeSpeed * this.scale;
+    this.pipeGap = this.height * CONFIG.basePipeGap;
+    this.pipeWidth = this.width * CONFIG.basePipeWidth;
+    this.birdRadius = Math.min(this.width, this.height) * CONFIG.baseBirdRadius;
   }
   
   reset() {
@@ -304,7 +324,7 @@ class Game {
       x: this.width * 0.2,
       y: this.height / 2,
       velocity: 0,
-      radius: 20,
+      radius: this.birdRadius,
       rotation: 0
     };
     this.pipes = [];
@@ -364,7 +384,7 @@ class Game {
   }
   
   jump() {
-    this.bird.velocity = CONFIG.jumpStrength;
+    this.bird.velocity = this.jumpStrength;
   }
   
   endGame(collisionObstacle: string = '바닥') {
@@ -531,7 +551,7 @@ class Game {
     this.frames++;
     
     // Physics
-    this.bird.velocity += CONFIG.gravity;
+    this.bird.velocity += this.gravity;
     this.bird.y += this.bird.velocity;
     
     // Rotation logic (reduced for smoother feel)
@@ -556,34 +576,35 @@ class Game {
     // Difficulty Scaling - 간격이 점점 좁아짐
     const tier = Math.floor(this.score / 10);
     const gapMultiplier = Math.pow(0.9, tier); // 10점마다 10% 좁아짐
-    const currentSpeed = CONFIG.pipeSpeed;
-    const currentGap = Math.max(CONFIG.pipeGap * gapMultiplier, 150); // 최소 150
-    
+    const currentSpeed = this.pipeSpeed;
+    const minGap = this.height * 0.2; // 최소 간격은 화면 높이의 20%
+    const currentGap = Math.max(this.pipeGap * gapMultiplier, minGap);
+
     // Pipe Spawning
     if (this.frames % CONFIG.pipeSpawnRate === 0) {
         const obstacleData = OBSTACLES[Math.floor(Math.random() * OBSTACLES.length)];
-        const minHeight = 50;
+        const minHeight = this.height * 0.1;
         const maxHeight = this.height - currentGap - minHeight;
         const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1) + minHeight);
         const bottomY = topHeight + currentGap;
-        
+
         // Add Top Pipe
         this.pipes.push({
             x: this.width,
             y: 0,
-            width: 60,
+            width: this.pipeWidth,
             height: topHeight,
             passed: false,
             type: 'TOP',
             emoji: obstacleData.emoji,
             label: obstacleData.text
         });
-        
+
         // Add Bottom Pipe
         this.pipes.push({
             x: this.width,
             y: bottomY,
-            width: 60,
+            width: this.pipeWidth,
             height: this.height - bottomY,
             passed: false,
             type: 'BOTTOM',
@@ -625,20 +646,26 @@ class Game {
   draw() {
     // Clear
     this.ctx.clearRect(0, 0, this.width, this.height);
-    
-    // Draw Background (Simple Cityscape effect)
+
+    // Draw Background
     this.ctx.fillStyle = '#f0f8ff';
-    this.ctx.fillRect(0, this.height - 100, this.width, 100);
-    
+    this.ctx.fillRect(0, this.height * 0.85, this.width, this.height * 0.15);
+
+    // 스케일된 폰트 크기
+    const labelFontSize = Math.max(10, Math.floor(this.scale * 12));
+    const emojiFontSize = Math.max(16, Math.floor(this.scale * 28));
+    const badgeHeight = Math.floor(this.scale * 24);
+    const badgePadding = Math.floor(this.scale * 4);
+
     // Draw Pipes (optimized for mobile)
     for (const p of this.pipes) {
-        // Simple rectangle - no gradients, no shadows
+        // Simple rectangle
         this.ctx.fillStyle = '#fecfef';
         this.ctx.fillRect(p.x, p.y, p.width, p.height);
 
         // Border
         this.ctx.strokeStyle = '#e91e63';
-        this.ctx.lineWidth = 3;
+        this.ctx.lineWidth = Math.max(2, this.scale * 3);
         this.ctx.strokeRect(p.x, p.y, p.width, p.height);
 
         // Label and emoji
@@ -647,71 +674,72 @@ class Game {
         const needsWrap = label.length > 3;
         const line1 = needsWrap ? label.slice(0, Math.ceil(label.length / 2)) : label;
         const line2 = needsWrap ? label.slice(Math.ceil(label.length / 2)) : '';
+        const actualBadgeHeight = needsWrap ? badgeHeight * 1.5 : badgeHeight;
 
         if (p.type === 'TOP') {
-            const badgeY = p.height - 45;
+            const badgeY = p.height - emojiFontSize - badgeHeight;
             // Badge background
             this.ctx.fillStyle = '#e91e63';
-            this.ctx.fillRect(p.x + 3, badgeY - 11, p.width - 6, needsWrap ? 34 : 22);
+            this.ctx.fillRect(p.x + badgePadding, badgeY, p.width - badgePadding * 2, actualBadgeHeight);
 
             this.ctx.fillStyle = '#fff';
-            this.ctx.font = 'bold 11px Arial';
+            this.ctx.font = `bold ${labelFontSize}px Arial`;
             if (needsWrap) {
-                this.ctx.fillText(line1, p.x + p.width/2, badgeY - 1);
-                this.ctx.fillText(line2, p.x + p.width/2, badgeY + 13);
+                this.ctx.fillText(line1, p.x + p.width/2, badgeY + actualBadgeHeight * 0.35);
+                this.ctx.fillText(line2, p.x + p.width/2, badgeY + actualBadgeHeight * 0.75);
             } else {
-                this.ctx.fillText(label, p.x + p.width/2, badgeY + 6);
+                this.ctx.fillText(label, p.x + p.width/2, badgeY + actualBadgeHeight * 0.7);
             }
 
-            this.ctx.font = 'bold 24px Arial';
-            this.ctx.fillText(p.emoji || '', p.x + p.width/2, p.height - 12);
+            this.ctx.font = `bold ${emojiFontSize}px Arial`;
+            this.ctx.fillText(p.emoji || '', p.x + p.width/2, p.height - emojiFontSize * 0.3);
         } else {
-            const badgeY = p.y + 25;
+            const badgeY = p.y + badgePadding;
             // Badge background
             this.ctx.fillStyle = '#e91e63';
-            this.ctx.fillRect(p.x + 3, badgeY - 11, p.width - 6, needsWrap ? 34 : 22);
+            this.ctx.fillRect(p.x + badgePadding, badgeY, p.width - badgePadding * 2, actualBadgeHeight);
 
             this.ctx.fillStyle = '#fff';
-            this.ctx.font = 'bold 11px Arial';
+            this.ctx.font = `bold ${labelFontSize}px Arial`;
             if (needsWrap) {
-                this.ctx.fillText(line1, p.x + p.width/2, badgeY - 1);
-                this.ctx.fillText(line2, p.x + p.width/2, badgeY + 13);
+                this.ctx.fillText(line1, p.x + p.width/2, badgeY + actualBadgeHeight * 0.35);
+                this.ctx.fillText(line2, p.x + p.width/2, badgeY + actualBadgeHeight * 0.75);
             } else {
-                this.ctx.fillText(label, p.x + p.width/2, badgeY + 6);
+                this.ctx.fillText(label, p.x + p.width/2, badgeY + actualBadgeHeight * 0.7);
             }
 
-            this.ctx.font = 'bold 28px Arial';
-            this.ctx.fillText(p.emoji || '', p.x + p.width/2, p.y + 65);
+            this.ctx.font = `bold ${emojiFontSize}px Arial`;
+            this.ctx.fillText(p.emoji || '', p.x + p.width/2, p.y + actualBadgeHeight + emojiFontSize);
         }
     }
-    
+
     // Draw Bird
+    const birdFontSize = Math.max(24, Math.floor(this.scale * 40));
     this.ctx.save();
     this.ctx.translate(this.bird.x, this.bird.y);
     this.ctx.rotate(this.bird.rotation);
-    // Draw Couple Emojis
-    this.ctx.font = '36px Arial';
+    this.ctx.font = `${birdFontSize}px Arial`;
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
     this.ctx.fillText('🤵👰', 0, 0);
     this.ctx.restore();
-    
-    // Draw Floor
-    /* Drawn as part of background simple rect */
 
     // Draw Ready Message
     if (this.state === 'READY') {
       this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
       this.ctx.fillRect(0, 0, this.width, this.height);
 
+      const titleSize = Math.max(18, Math.floor(this.scale * 26));
+      const subSize = Math.max(12, Math.floor(this.scale * 18));
+
       this.ctx.fillStyle = '#fff';
-      this.ctx.font = 'bold 24px Arial';
+      this.ctx.font = `bold ${titleSize}px Arial`;
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
-      this.ctx.fillText('화면을 터치하면 시작!', this.width / 2, this.height / 2 + 60);
+      this.ctx.fillText('화면을 터치하면 시작!', this.width / 2, this.height / 2 + this.height * 0.1);
 
-      this.ctx.font = '16px Arial';
-      this.ctx.fillText('장애물을 피해 예식장까지!', this.width / 2, this.height / 2 + 95);
+      this.ctx.font = `${subSize}px Arial`;
+      this.ctx.fillText('장애물을 피해 예식장까지!', this.width / 2, this.height / 2 + this.height * 0.17);
     }
   }
   
