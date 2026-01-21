@@ -280,10 +280,23 @@ class Game {
   }
   
   resize() {
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
+    // 모바일: 1:1 정사각형, PC: 전체 화면
+    const isMobileDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    if (isMobileDevice) {
+      const size = Math.min(window.innerWidth, window.innerHeight);
+      this.width = size;
+      this.height = size;
+      this.canvas.width = size;
+      this.canvas.height = size;
+      this.canvas.style.width = size + 'px';
+      this.canvas.style.height = size + 'px';
+    } else {
+      this.width = window.innerWidth;
+      this.height = window.innerHeight;
+      this.canvas.width = this.width;
+      this.canvas.height = this.height;
+    }
   }
   
   reset() {
