@@ -2,6 +2,12 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
+import { createClient } from '@supabase/supabase-js';
+
+// --- Supabase Setup ---
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // --- Configuration ---
 const CONFIG = {
@@ -346,91 +352,97 @@ class Game {
     aiContainer.innerText = `💬 ${message}`;
   }
 
-  submitScore() {
+  async submitScore() {
     const nameInput = document.getElementById('inputName') as HTMLInputElement;
     const phoneInput = document.getElementById('inputPhone') as HTMLInputElement;
     const btn = document.getElementById('submitScoreBtn') as HTMLButtonElement;
-    
+
     const name = nameInput.value.trim();
     const phone = phoneInput.value.trim();
-    
+
     if (!name || phone.length < 4) {
         alert("이름과 전화번호 뒷자리 4자리를 정확히 입력해주세요.");
         return;
     }
 
-    const entry: ScoreEntry = {
-        name,
-        phone,
-        score: this.score,
-        timestamp: Date.now()
-    };
-
-    // Save to LocalStorage (Simulating Backend)
-    const stored = localStorage.getItem('wedding_game_leaderboard');
-    const leaderboard: ScoreEntry[] = stored ? JSON.parse(stored) : [];
-    leaderboard.push(entry);
-    
-    // Sort: High score first, then earliest timestamp
-    leaderboard.sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        return a.timestamp - b.timestamp;
-    });
-
-    localStorage.setItem('wedding_game_leaderboard', JSON.stringify(leaderboard));
-    
     btn.disabled = true;
-    btn.innerText = "등록 완료!";
-    this.renderLeaderboard(entry);
+    btn.innerText = "등록 중...";
+
+    try {
+        const { data, error } = await supabase
+            .from('fluffytest')
+            .insert([{ name, phone, score: this.score }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        btn.innerText = "등록 완료!";
+        await this.renderLeaderboard(data);
+    } catch (e) {
+        console.error(e);
+        btn.disabled = false;
+        btn.innerText = "기록 등록하기";
+        alert("등록 실패! 다시 시도해주세요.");
+    }
   }
 
-  renderLeaderboard(currentEntry?: ScoreEntry) {
+  async renderLeaderboard(currentEntry?: { id?: number; name: string; phone: string; score: number }) {
     const list = document.getElementById('leaderboardList')!;
-    list.innerHTML = '';
-    
-    const stored = localStorage.getItem('wedding_game_leaderboard');
-    const leaderboard: ScoreEntry[] = stored ? JSON.parse(stored) : [];
-    
-    // Show top 5
-    const top5 = leaderboard.slice(0, 5);
-    
-    top5.forEach((item, index) => {
-        const div = document.createElement('div');
-        div.className = 'rank-item';
-        if (currentEntry && item.timestamp === currentEntry.timestamp && item.name === currentEntry.name) {
-            div.classList.add('highlight');
-        }
-        div.innerHTML = `
-            <span>${index + 1}위 ${item.name} (${item.phone})</span>
-            <span>${item.score}점</span>
-        `;
-        list.appendChild(div);
-    });
+    list.innerHTML = '<div style="color:#888;text-align:center;">로딩 중...</div>';
 
-    // If user is not in top 5, show their rank
-    if (currentEntry) {
-        const userRank = leaderboard.findIndex(i => i.timestamp === currentEntry.timestamp) + 1;
-        if (userRank > 5) {
+    try {
+        // Get top 5
+        const { data: top5, error } = await supabase
+            .from('fluffytest')
+            .select('*')
+            .order('score', { ascending: false })
+            .order('created_at', { ascending: true })
+            .limit(5);
+
+        if (error) throw error;
+
+        list.innerHTML = '';
+
+        (top5 || []).forEach((item, index) => {
             const div = document.createElement('div');
-            div.className = 'rank-item highlight';
-            div.style.marginTop = '10px';
-            div.style.borderTop = '1px dashed #ccc';
+            div.className = 'rank-item';
+            if (currentEntry?.id && item.id === currentEntry.id) {
+                div.classList.add('highlight');
+            }
             div.innerHTML = `
-                <span>${userRank}위 ${currentEntry.name} (${currentEntry.phone})</span>
-                <span>${currentEntry.score}점</span>
+                <span>${index + 1}위 ${item.name} (${item.phone})</span>
+                <span>${item.score}점</span>
             `;
             list.appendChild(div);
-            
-            // Show gap to next rank
-            const prevRankScore = leaderboard[userRank - 2].score;
-            const diff = prevRankScore - currentEntry.score;
-            const msg = document.createElement('div');
-            msg.style.fontSize = '0.8rem';
-            msg.style.color = '#888';
-            msg.style.textAlign = 'center';
-            msg.innerText = `🚀 ${userRank - 1}위와 단 ${diff}점 차이!`;
-            list.appendChild(msg);
+        });
+
+        // If user entry exists and not in top 5, find their rank
+        if (currentEntry?.id) {
+            const isInTop5 = top5?.some(item => item.id === currentEntry.id);
+            if (!isInTop5) {
+                // Get user's rank
+                const { count } = await supabase
+                    .from('fluffytest')
+                    .select('*', { count: 'exact', head: true })
+                    .gt('score', currentEntry.score);
+
+                const userRank = (count || 0) + 1;
+
+                const div = document.createElement('div');
+                div.className = 'rank-item highlight';
+                div.style.marginTop = '10px';
+                div.style.borderTop = '1px dashed #ccc';
+                div.innerHTML = `
+                    <span>${userRank}위 ${currentEntry.name} (${currentEntry.phone})</span>
+                    <span>${currentEntry.score}점</span>
+                `;
+                list.appendChild(div);
+            }
         }
+    } catch (e) {
+        console.error(e);
+        list.innerHTML = '<div style="color:#888;text-align:center;">리더보드 로딩 실패</div>';
     }
   }
 
@@ -606,25 +618,53 @@ class Game {
         this.ctx.save();
         this.ctx.textAlign = 'center';
 
+        const label = p.label || '';
+        const needsWrap = label.length > 3;
+        const line1 = needsWrap ? label.slice(0, Math.ceil(label.length / 2)) : label;
+        const line2 = needsWrap ? label.slice(Math.ceil(label.length / 2)) : '';
+
         if (p.type === 'TOP') {
-            // Emoji at bottom of top pipe
-            this.ctx.font = 'bold 28px Arial';
-            this.ctx.fillText(p.emoji || '', p.x + p.width/2, p.height - 15);
-        } else {
-            // Label badge
-            const badgeY = p.y + 25;
+            // Label badge at bottom of top pipe
+            const badgeY = p.height - 45;
+            const badgeHeight = needsWrap ? 34 : 22;
             this.ctx.fillStyle = 'rgba(233, 30, 99, 0.9)';
             this.ctx.beginPath();
-            this.ctx.roundRect(p.x + 5, badgeY - 12, p.width - 10, 24, 8);
+            this.ctx.roundRect(p.x + 3, badgeY - badgeHeight/2, p.width - 6, badgeHeight, 8);
             this.ctx.fill();
 
             this.ctx.fillStyle = '#fff';
-            this.ctx.font = 'bold 12px Arial';
-            this.ctx.fillText(p.label || '', p.x + p.width/2, badgeY + 4);
+            this.ctx.font = 'bold 11px Arial';
+            if (needsWrap) {
+                this.ctx.fillText(line1, p.x + p.width/2, badgeY - 5);
+                this.ctx.fillText(line2, p.x + p.width/2, badgeY + 9);
+            } else {
+                this.ctx.fillText(label, p.x + p.width/2, badgeY + 4);
+            }
+
+            // Emoji below label
+            this.ctx.font = 'bold 24px Arial';
+            this.ctx.fillText(p.emoji || '', p.x + p.width/2, p.height - 12);
+        } else {
+            // Label badge at top of bottom pipe
+            const badgeY = p.y + 25;
+            const badgeHeight = needsWrap ? 34 : 22;
+            this.ctx.fillStyle = 'rgba(233, 30, 99, 0.9)';
+            this.ctx.beginPath();
+            this.ctx.roundRect(p.x + 3, badgeY - badgeHeight/2, p.width - 6, badgeHeight, 8);
+            this.ctx.fill();
+
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = 'bold 11px Arial';
+            if (needsWrap) {
+                this.ctx.fillText(line1, p.x + p.width/2, badgeY - 5);
+                this.ctx.fillText(line2, p.x + p.width/2, badgeY + 9);
+            } else {
+                this.ctx.fillText(label, p.x + p.width/2, badgeY + 4);
+            }
 
             // Emoji below
-            this.ctx.font = 'bold 32px Arial';
-            this.ctx.fillText(p.emoji || '', p.x + p.width/2, p.y + 70);
+            this.ctx.font = 'bold 28px Arial';
+            this.ctx.fillText(p.emoji || '', p.x + p.width/2, p.y + 65);
         }
         this.ctx.restore();
     }
