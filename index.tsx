@@ -540,18 +540,11 @@ class Game {
         return;
     }
     
-    // Difficulty Scaling (10% per tier)
-    let currentSpeed = CONFIG.pipeSpeed;
-    let currentGap = CONFIG.pipeGap;
-
-    if (this.score > 10) {
-        currentSpeed *= 1.1;  // 10% 증가
-        currentGap *= 0.95;
-    }
-    if (this.score > 20) {
-        currentSpeed *= 1.1;  // 추가 10% 증가
-        currentGap *= 0.95;
-    }
+    // Difficulty Scaling (10% per 10 points)
+    const tier = Math.floor(this.score / 10);
+    const speedMultiplier = Math.pow(1.1, tier); // 10점마다 10% 증가
+    const currentSpeed = CONFIG.pipeSpeed * speedMultiplier;
+    const currentGap = CONFIG.pipeGap;
     
     // Pipe Spawning
     if (this.frames % CONFIG.pipeSpawnRate === 0) {
