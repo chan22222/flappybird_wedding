@@ -134,6 +134,7 @@ class Game {
   // DOM Elements
   uiMenu: HTMLElement;
   uiGameOver: HTMLElement;
+  uiRanking: HTMLElement;
   scoreDisplay: HTMLElement;
   rankDisplay: HTMLElement;
   aiMessageDisplay: HTMLElement;
@@ -196,6 +197,7 @@ class Game {
       <p style="font-size: 0.8rem; color: #888;">하루 최대 ${CONFIG.maxAttempts}회 도전 가능</p>
       <p id="attemptsDisplay" style="font-size: 0.9rem; color: #e91e63; font-weight: bold;"></p>
       <button class="btn" id="startBtn">게임 시작</button>
+      <button class="btn" id="rankBtn" style="background: #9c27b0; margin-top: 10px;">🏆 랭킹 보기</button>
     `;
     document.getElementById('app')!.appendChild(this.uiMenu);
 
@@ -203,8 +205,29 @@ class Game {
     this.updateAttemptsDisplay();
 
     this.uiMenu.querySelector('#startBtn')!.addEventListener('click', (e) => {
-        e.stopPropagation(); // prevent immediate jump
+        e.stopPropagation();
         this.startGame();
+    });
+
+    this.uiMenu.querySelector('#rankBtn')!.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showRankingOverlay();
+    });
+
+    // Ranking Overlay
+    this.uiRanking = document.createElement('div');
+    this.uiRanking.className = 'overlay hidden';
+    this.uiRanking.innerHTML = `
+      <h2>🏆 명예의 전당</h2>
+      <div class="leaderboard" id="rankingList" style="margin: 20px 0;"></div>
+      <button class="btn" id="closeRankBtn" style="background: #aaa;">닫기</button>
+    `;
+    document.getElementById('app')!.appendChild(this.uiRanking);
+
+    this.uiRanking.querySelector('#closeRankBtn')!.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.uiRanking.classList.add('hidden');
+        this.uiMenu.classList.remove('hidden');
     });
 
     // Score Display
@@ -350,6 +373,46 @@ class Game {
     const aiContainer = document.getElementById('aiMessage')!;
     const message = getRandomMessage(obstacle, this.score);
     aiContainer.innerText = `💬 ${message}`;
+  }
+
+  async showRankingOverlay() {
+    this.uiMenu.classList.add('hidden');
+    this.uiRanking.classList.remove('hidden');
+
+    const list = document.getElementById('rankingList')!;
+    list.innerHTML = '<div style="color:#888;text-align:center;">로딩 중...</div>';
+
+    try {
+        const { data: rankings, error } = await supabase
+            .from('fluffytest')
+            .select('*')
+            .order('score', { ascending: false })
+            .order('created_at', { ascending: true })
+            .limit(10);
+
+        if (error) throw error;
+
+        list.innerHTML = '';
+
+        if (!rankings || rankings.length === 0) {
+            list.innerHTML = '<div style="color:#888;text-align:center;">아직 기록이 없습니다</div>';
+            return;
+        }
+
+        rankings.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'rank-item';
+            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}위`;
+            div.innerHTML = `
+                <span>${medal} ${item.name} (${item.phone})</span>
+                <span>${item.score}점</span>
+            `;
+            list.appendChild(div);
+        });
+    } catch (e) {
+        console.error(e);
+        list.innerHTML = '<div style="color:#888;text-align:center;">로딩 실패</div>';
+    }
   }
 
   async submitScore() {
