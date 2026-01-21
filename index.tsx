@@ -14,13 +14,13 @@ const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 const BASE_SIZE = 600; // 기준 크기
 
 const CONFIG = {
-  baseGravity: 0.15,
-  baseJumpStrength: -5,
-  basePipeSpeed: 3,
-  pipeSpawnRate: isMobile ? 100 : 120, // frames
-  basePipeGap: isMobile ? 0.55 : 0.4, // 모바일은 화면의 55%, PC는 40%
-  basePipeWidth: isMobile ? 0.12 : 0.1,
-  baseBirdRadius: isMobile ? 0.03 : 0.04,
+  baseGravity: 0.12,
+  baseJumpStrength: -4,
+  basePipeSpeed: 2.5,
+  pipeSpawnRate: 110, // frames
+  basePipeGap: 0.5, // 화면 높이의 50%
+  basePipeWidth: 0.12,
+  baseBirdRadius: 0.035,
   maxAttempts: 10, // Daily limit
 };
 
@@ -291,21 +291,14 @@ class Game {
   }
   
   resize() {
-    // 모바일: 1:1 정사각형, PC: 전체 화면
-    if (isMobile) {
-      const size = Math.min(window.innerWidth, window.innerHeight);
-      this.width = size;
-      this.height = size;
-      this.canvas.width = size;
-      this.canvas.height = size;
-      this.canvas.style.width = size + 'px';
-      this.canvas.style.height = size + 'px';
-    } else {
-      this.width = window.innerWidth;
-      this.height = window.innerHeight;
-      this.canvas.width = this.width;
-      this.canvas.height = this.height;
-    }
+    // 모바일/PC 모두 1:1 정사각형
+    const size = Math.min(window.innerWidth, window.innerHeight);
+    this.width = size;
+    this.height = size;
+    this.canvas.width = size;
+    this.canvas.height = size;
+    this.canvas.style.width = size + 'px';
+    this.canvas.style.height = size + 'px';
 
     // 스케일 계산 (기준 크기 대비)
     this.scale = Math.min(this.width, this.height) / BASE_SIZE;
