@@ -196,7 +196,7 @@ class Game {
       <p>화면을 터치해 장애물을 피하세요!</p>
       <p style="font-size: 0.8rem; color: #888;">하루 최대 ${CONFIG.maxAttempts}회 도전 가능</p>
       <p id="attemptsDisplay" style="font-size: 0.9rem; color: #e91e63; font-weight: bold;"></p>
-      <button class="btn" id="startBtn">🎮 게임 시작</button>
+      <button class="btn" id="startBtn">💒 게임 시작</button>
       <button class="btn" id="rankBtn" style="background: #9c27b0;">🏆 랭킹 보기</button>
     `;
     document.getElementById('app')!.appendChild(this.uiMenu);
