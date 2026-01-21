@@ -10,7 +10,7 @@ const CONFIG = {
   jumpStrength: -3, // slightly floaty for easier play
   pipeSpeed: 1.8,
   pipeSpawnRate: 200, // frames
-  pipeGap: 220, // vertical gap
+  pipeGap: 330, // vertical gap
   maxAttempts: 10, // Daily limit
 };
 
@@ -393,6 +393,12 @@ class Game {
     else {
         this.bird.rotation += 2 * Math.PI / 180;
         if (this.bird.rotation > 70 * Math.PI / 180) this.bird.rotation = 70 * Math.PI / 180;
+    }
+
+    // Ceiling Collision
+    if (this.bird.y - this.bird.radius <= 0) {
+        this.endGame('하늘');
+        return;
     }
 
     // Floor Collision
