@@ -540,11 +540,11 @@ class Game {
         return;
     }
     
-    // Difficulty Scaling (10% per 10 points)
+    // Difficulty Scaling - 간격이 점점 좁아짐
     const tier = Math.floor(this.score / 10);
-    const speedMultiplier = Math.pow(1.1, tier); // 10점마다 10% 증가
-    const currentSpeed = CONFIG.pipeSpeed * speedMultiplier;
-    const currentGap = CONFIG.pipeGap;
+    const gapMultiplier = Math.pow(0.9, tier); // 10점마다 10% 좁아짐
+    const currentSpeed = CONFIG.pipeSpeed;
+    const currentGap = Math.max(CONFIG.pipeGap * gapMultiplier, 150); // 최소 150
     
     // Pipe Spawning
     if (this.frames % CONFIG.pipeSpawnRate === 0) {
