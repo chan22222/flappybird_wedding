@@ -407,18 +407,9 @@ class Game {
         return;
     }
     
-    // Difficulty Scaling
-    let currentSpeed = CONFIG.pipeSpeed;
-    let currentGap = CONFIG.pipeGap;
-    
-    if (this.score > 10) {
-        currentSpeed += 1;
-        currentGap -= 20;
-    }
-    if (this.score > 20) {
-        currentSpeed += 1;
-        currentGap -= 10;
-    }
+    // Difficulty Scaling (very gentle)
+    const currentSpeed = CONFIG.pipeSpeed;
+    const currentGap = CONFIG.pipeGap;
     
     // Pipe Spawning
     if (this.frames % CONFIG.pipeSpawnRate === 0) {
