@@ -18,9 +18,9 @@ const CONFIG = {
   baseJumpStrength: -5,
   basePipeSpeed: 3,
   pipeSpawnRate: isMobile ? 100 : 120, // frames
-  basePipeGap: 0.35, // 화면 높이의 35%
-  basePipeWidth: 0.1, // 화면 너비의 10%
-  baseBirdRadius: 0.04, // 화면 크기의 4%
+  basePipeGap: isMobile ? 0.55 : 0.4, // 모바일은 화면의 55%, PC는 40%
+  basePipeWidth: isMobile ? 0.12 : 0.1,
+  baseBirdRadius: isMobile ? 0.03 : 0.04,
   maxAttempts: 10, // Daily limit
 };
 
