@@ -10,11 +10,14 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // --- Configuration ---
+const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+const mobileMultiplier = isMobile ? 2 : 1;
+
 const CONFIG = {
-  gravity: 0.08,
-  jumpStrength: -3, // slightly floaty for easier play
-  pipeSpeed: 1.8,
-  pipeSpawnRate: 200, // frames
+  gravity: 0.08 * mobileMultiplier,
+  jumpStrength: -3 * mobileMultiplier, // slightly floaty for easier play
+  pipeSpeed: 1.8 * mobileMultiplier,
+  pipeSpawnRate: Math.floor(200 / mobileMultiplier), // frames
   pipeGap: 330, // vertical gap
   maxAttempts: 10, // Daily limit
 };
