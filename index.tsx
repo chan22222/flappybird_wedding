@@ -621,115 +621,59 @@ class Game {
     this.ctx.fillStyle = '#f0f8ff';
     this.ctx.fillRect(0, this.height - 100, this.width, 100);
     
-    // Draw Pipes with modern design
+    // Draw Pipes (optimized for mobile)
     for (const p of this.pipes) {
-        this.ctx.save();
-
-        // Shadow
-        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-        this.ctx.shadowBlur = 10;
-        this.ctx.shadowOffsetX = 4;
-        this.ctx.shadowOffsetY = 4;
-
-        // Gradient fill
-        const gradient = this.ctx.createLinearGradient(p.x, 0, p.x + p.width, 0);
-        gradient.addColorStop(0, '#ff9a9e');
-        gradient.addColorStop(0.5, '#fecfef');
-        gradient.addColorStop(1, '#fecfef');
-
-        // Draw rounded rectangle
-        const radius = 12;
-        this.ctx.beginPath();
-        if (p.type === 'TOP') {
-            this.ctx.moveTo(p.x + radius, p.y);
-            this.ctx.lineTo(p.x + p.width - radius, p.y);
-            this.ctx.quadraticCurveTo(p.x + p.width, p.y, p.x + p.width, p.y + radius);
-            this.ctx.lineTo(p.x + p.width, p.y + p.height - radius);
-            this.ctx.quadraticCurveTo(p.x + p.width, p.y + p.height, p.x + p.width - radius, p.y + p.height);
-            this.ctx.lineTo(p.x + radius, p.y + p.height);
-            this.ctx.quadraticCurveTo(p.x, p.y + p.height, p.x, p.y + p.height - radius);
-            this.ctx.lineTo(p.x, p.y + radius);
-            this.ctx.quadraticCurveTo(p.x, p.y, p.x + radius, p.y);
-        } else {
-            this.ctx.moveTo(p.x + radius, p.y);
-            this.ctx.quadraticCurveTo(p.x, p.y, p.x, p.y + radius);
-            this.ctx.lineTo(p.x, p.y + p.height);
-            this.ctx.lineTo(p.x + p.width, p.y + p.height);
-            this.ctx.lineTo(p.x + p.width, p.y + radius);
-            this.ctx.quadraticCurveTo(p.x + p.width, p.y, p.x + p.width - radius, p.y);
-        }
-        this.ctx.closePath();
-        this.ctx.fillStyle = gradient;
-        this.ctx.fill();
+        // Simple rectangle - no gradients, no shadows
+        this.ctx.fillStyle = '#fecfef';
+        this.ctx.fillRect(p.x, p.y, p.width, p.height);
 
         // Border
-        this.ctx.shadowColor = 'transparent';
         this.ctx.strokeStyle = '#e91e63';
         this.ctx.lineWidth = 3;
-        this.ctx.stroke();
+        this.ctx.strokeRect(p.x, p.y, p.width, p.height);
 
-        // Inner highlight
-        const innerGradient = this.ctx.createLinearGradient(p.x, 0, p.x + p.width, 0);
-        innerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
-        innerGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        this.ctx.fillStyle = innerGradient;
-        this.ctx.fillRect(p.x + 5, p.y + 5, 15, p.height - 10);
-
-        this.ctx.restore();
-
-        // Emoji and label with better styling
-        this.ctx.save();
+        // Label and emoji
         this.ctx.textAlign = 'center';
-
         const label = p.label || '';
         const needsWrap = label.length > 3;
         const line1 = needsWrap ? label.slice(0, Math.ceil(label.length / 2)) : label;
         const line2 = needsWrap ? label.slice(Math.ceil(label.length / 2)) : '';
 
         if (p.type === 'TOP') {
-            // Label badge at bottom of top pipe
             const badgeY = p.height - 45;
-            const badgeHeight = needsWrap ? 34 : 22;
-            this.ctx.fillStyle = 'rgba(233, 30, 99, 0.9)';
-            this.ctx.beginPath();
-            this.ctx.roundRect(p.x + 3, badgeY - badgeHeight/2, p.width - 6, badgeHeight, 8);
-            this.ctx.fill();
+            // Badge background
+            this.ctx.fillStyle = '#e91e63';
+            this.ctx.fillRect(p.x + 3, badgeY - 11, p.width - 6, needsWrap ? 34 : 22);
 
             this.ctx.fillStyle = '#fff';
             this.ctx.font = 'bold 11px Arial';
             if (needsWrap) {
-                this.ctx.fillText(line1, p.x + p.width/2, badgeY - 5);
-                this.ctx.fillText(line2, p.x + p.width/2, badgeY + 9);
+                this.ctx.fillText(line1, p.x + p.width/2, badgeY - 1);
+                this.ctx.fillText(line2, p.x + p.width/2, badgeY + 13);
             } else {
-                this.ctx.fillText(label, p.x + p.width/2, badgeY + 4);
+                this.ctx.fillText(label, p.x + p.width/2, badgeY + 6);
             }
 
-            // Emoji below label
             this.ctx.font = 'bold 24px Arial';
             this.ctx.fillText(p.emoji || '', p.x + p.width/2, p.height - 12);
         } else {
-            // Label badge at top of bottom pipe
             const badgeY = p.y + 25;
-            const badgeHeight = needsWrap ? 34 : 22;
-            this.ctx.fillStyle = 'rgba(233, 30, 99, 0.9)';
-            this.ctx.beginPath();
-            this.ctx.roundRect(p.x + 3, badgeY - badgeHeight/2, p.width - 6, badgeHeight, 8);
-            this.ctx.fill();
+            // Badge background
+            this.ctx.fillStyle = '#e91e63';
+            this.ctx.fillRect(p.x + 3, badgeY - 11, p.width - 6, needsWrap ? 34 : 22);
 
             this.ctx.fillStyle = '#fff';
             this.ctx.font = 'bold 11px Arial';
             if (needsWrap) {
-                this.ctx.fillText(line1, p.x + p.width/2, badgeY - 5);
-                this.ctx.fillText(line2, p.x + p.width/2, badgeY + 9);
+                this.ctx.fillText(line1, p.x + p.width/2, badgeY - 1);
+                this.ctx.fillText(line2, p.x + p.width/2, badgeY + 13);
             } else {
-                this.ctx.fillText(label, p.x + p.width/2, badgeY + 4);
+                this.ctx.fillText(label, p.x + p.width/2, badgeY + 6);
             }
 
-            // Emoji below
             this.ctx.font = 'bold 28px Arial';
             this.ctx.fillText(p.emoji || '', p.x + p.width/2, p.y + 65);
         }
-        this.ctx.restore();
     }
     
     // Draw Bird
